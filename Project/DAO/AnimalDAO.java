@@ -17,7 +17,6 @@ public class AnimalDAO {
             stmt.setBoolean(3, animal.isPredator());
             stmt.executeUpdate();
 
-            // Retrieve the auto-generated ID
             try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
                 if (generatedKeys.next()) {
                     animal.setId(generatedKeys.getInt(1));
