@@ -1,7 +1,8 @@
-package ui;
+package UI;
 
 import Models.*;
 import DataAccessObjects.*;
+
 import javax.swing.*;
 import java.awt.*;
 import java.sql.SQLException;
@@ -9,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class UserInterface extends JFrame {
-
     private ZooDAO zooDAO = new ZooDAO();
     private CageDAO cageDAO = new CageDAO();
     private AnimalDAO animalDAO = new AnimalDAO();
@@ -67,12 +67,10 @@ public class UserInterface extends JFrame {
         JMenuItem addAnimalItem = new JMenuItem("Add Animal");
         JMenuItem updateAnimalItem = new JMenuItem("Update Animal");
         JMenuItem deleteAnimalItem = new JMenuItem("Delete Animal");
-        JMenuItem transferAnimalItem = new JMenuItem("Transfer Animal");
 
         addAnimalItem.addActionListener(e -> addAnimalUI());
         updateAnimalItem.addActionListener(e -> updateAnimalUI());
         deleteAnimalItem.addActionListener(e -> deleteAnimalUI());
-        transferAnimalItem.addActionListener(e -> transferAnimalUI());
 
         animalMenu.add(addAnimalItem);
         animalMenu.add(updateAnimalItem);
@@ -100,25 +98,32 @@ public class UserInterface extends JFrame {
         getContentPane().removeAll();
 
         JLabel welcomeLabel = new JLabel("Welcome to the Zoo Management System");
-        welcomeLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        welcomeLabel.setFont(new Font("Arial", Font.HANGING_BASELINE, 24));
         welcomeLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
         JButton createZooButton = new JButton("Create Zoo");
         JButton selectZooButton = new JButton("Select Zoo");
+        JButton exitButton = new JButton("Exit");
 
         createZooButton.addActionListener(e -> createZooUI());
         selectZooButton.addActionListener(e -> selectZooUI());
+        exitButton.addActionListener(e -> exitByClick());
 
         JPanel panel = new JPanel();
         panel.setLayout(new FlowLayout());
         panel.add(createZooButton);
         panel.add(selectZooButton);
+        panel.add(exitButton);
 
         getContentPane().add(welcomeLabel, BorderLayout.CENTER);
         getContentPane().add(panel, BorderLayout.SOUTH);
 
         revalidate();
         repaint();
+    }
+
+    private void exitByClick() {
+        System.exit(ABORT);
     }
 
     private void createZooUI() {
@@ -239,7 +244,8 @@ public class UserInterface extends JFrame {
             return;
         }
 
-        int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete the current zoo?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
+        int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete the current zoo?",
+                "Confirm Delete", JOptionPane.YES_NO_OPTION);
         if (confirm == JOptionPane.YES_OPTION) {
             try {
                 zooDAO.deleteZoo(currentZoo.getId());
@@ -574,11 +580,40 @@ public class UserInterface extends JFrame {
 
             animalComboBox.addActionListener(e -> {
                 Animal selectedAnimal = (Animal) animalComboBox.getSelectedItem();
-                nameField.setText(selectedAnimal.getName());
-                predatorCheckBox.setSelected(selectedAnimal.isPredator());
-                Cage animalCage = cages.stream().filter(c -> c.getId() == selectedAnimal.getCageId()).findFirst()
-                        .orElse(null);
-                cageComboBox.setSelectedItem(animalCage);
+                if (selectedAnimal != null) {
+                    nameField.setText(selectedAnimal.getName());
+                    predatorCheckBox.setSelected(selectedAnimal.isPredator());
+                    Cage animalCage = cages.stream().filter(c -> c.getId() == selectedAnimal.getCageId()).findFirst().orElse(null);
+                    cageComboBox.setSelectedItem(animalCage);
+                }
+            });
+
+            if (!animals.isEmpty()) {
+                animalComboBox.setSelectedIndex(0);
+                animalComboBox.getActionListeners()[0].actionPerformed(null);
+            }
+
+            updateButton.addActionListener(e -> {
+                Animal selectedAnimal = (Animal) animalComboBox.getSelectedItem();
+                if (selectedAnimal == null) {
+                    showErrorDialog("No animal selected.");
+                    return;
+                }
+
+                selectedAnimal.setName(nameField.getText());
+                selectedAnimal.setPredator(predatorCheckBox.isSelected());
+                Cage selectedCage = (Cage) cageComboBox.getSelectedItem();
+                if (selectedCage != null) {
+                    selectedAnimal.setCageId(selectedCage.getId());
+                }
+
+                try {
+                    animalDAO.updateAnimal(selectedAnimal);
+                    JOptionPane.showMessageDialog(this, "Animal updated successfully!");
+                    mainMenuUI();
+                } catch (SQLException ex) {
+                    showErrorDialog("Failed to update animal: " + ex.getMessage());
+                }
             });
 
             JPanel panel = new JPanel(new GridLayout(6, 2, 5, 5));
@@ -592,11 +627,10 @@ public class UserInterface extends JFrame {
             panel.add(cageComboBox);
             panel.add(new JLabel());
             panel.add(updateButton);
-
+       
             getContentPane().add(panel, BorderLayout.CENTER);
             revalidate();
             repaint();
-
         } catch (SQLException e) {
             showErrorDialog(e.getMessage());
         }
@@ -637,8 +671,7 @@ public class UserInterface extends JFrame {
             deleteButton.addActionListener(e -> {
                 Animal selectedAnimal = (Animal) animalComboBox.getSelectedItem();
 
-                int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete the selected animal?", "Confirm Delete",
-                        JOptionPane.YES_NO_OPTION);
+                int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to delete the selected animal?", "Confirm Delete", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
                     try {
                         animalDAO.deleteAnimal(selectedAnimal.getId());
@@ -696,8 +729,10 @@ public class UserInterface extends JFrame {
                 if (animals.isEmpty()) {
                     panel.add(new JLabel("   No animals in this cage."));
                 } else {
+                    int i = 1;
                     for (Animal animal : animals) {
-                        panel.add(new JLabel("   " + animal.toString()));
+                        panel.add(new JLabel(i + "." + animal.toString()));
+                        i++;
                     }
                 }
                 panel.add(Box.createRigidArea(new Dimension(0, 10)));
@@ -780,8 +815,5 @@ public class UserInterface extends JFrame {
 
     private void showErrorDialog(String message) {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
-    }
-
-    private void transferAnimalUI() {
     }
 }
